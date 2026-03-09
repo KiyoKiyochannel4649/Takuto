@@ -1,227 +1,152 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
-<title>God Level FPS</title>
+<meta charset="UTF-8">
+<title>Mini Suika Game</title>
 
 <style>
 body{
 margin:0;
-overflow:hidden;
-background:black;
+background:#f2d6a2;
+text-align:center;
 font-family:sans-serif;
 }
 
-#ui{
-position:absolute;
-top:10px;
-left:10px;
-color:white;
-font-size:20px;
-}
-
 #score{
-position:absolute;
-top:40px;
-left:10px;
-color:yellow;
-font-size:22px;
+font-size:28px;
+margin:10px;
 }
 
-#hp{
-position:absolute;
-top:70px;
-left:10px;
-color:red;
-font-size:22px;
+canvas{
+background:#fff3d1;
+border:4px solid #333;
 }
-
-#crosshair{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-color:white;
-font-size:30px;
-}
-
 </style>
+
 </head>
 
 <body>
 
-<div id="ui">WASD移動 / クリック射撃</div>
 <div id="score">Score: 0</div>
-<div id="hp">HP: 100</div>
-<div id="crosshair">+</div>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/PointerLockControls.js"></script>
+<canvas id="game" width="400" height="600"></canvas>
 
 <script>
 
+const canvas = document.getElementById("game")
+const ctx = canvas.getContext("2d")
+
 let score = 0
-let hp = 100
 
-const scoreUI = document.getElementById("score")
-const hpUI = document.getElementById("hp")
+const fruits = [
+{r:15,color:"#ff4d4d"},
+{r:20,color:"#ff944d"},
+{r:25,color:"#ffd24d"},
+{r:30,color:"#8cff66"},
+{r:35,color:"#66ccff"},
+{r:45,color:"#ff66cc"}
+]
 
-const scene = new THREE.Scene()
+let objects=[]
 
-const camera = new THREE.PerspectiveCamera(
-75,
-window.innerWidth/window.innerHeight,
-0.1,
-1000
-)
+function spawnFruit(x){
 
-const renderer = new THREE.WebGLRenderer()
-renderer.setSize(window.innerWidth,window.innerHeight)
-document.body.appendChild(renderer.domElement)
+const type = Math.floor(Math.random()*3)
 
-const controls = new THREE.PointerLockControls(camera,document.body)
-
-document.body.addEventListener("click",()=>{
-controls.lock()
+objects.push({
+x:x,
+y:50,
+vx:0,
+vy:0,
+type:type
 })
-
-scene.add(controls.getObject())
-
-const light = new THREE.HemisphereLight(0xffffff,0x444444)
-scene.add(light)
-
-const floorGeo = new THREE.PlaneGeometry(200,200)
-const floorMat = new THREE.MeshBasicMaterial({color:0x333333})
-const floor = new THREE.Mesh(floorGeo,floorMat)
-
-floor.rotation.x = -Math.PI/2
-scene.add(floor)
-
-const enemies=[]
-
-function createEnemy(){
-
-const geo = new THREE.BoxGeometry(1,1,1)
-const mat = new THREE.MeshBasicMaterial({color:0xff0000})
-
-const enemy = new THREE.Mesh(geo,mat)
-
-enemy.position.x=(Math.random()-0.5)*40
-enemy.position.z=(Math.random()-0.5)*40
-enemy.position.y=0.5
-
-scene.add(enemy)
-
-enemies.push(enemy)
 
 }
 
-setInterval(createEnemy,2000)
+canvas.addEventListener("click",(e)=>{
 
-const bullets=[]
+const rect = canvas.getBoundingClientRect()
+const x = e.clientX - rect.left
 
-document.addEventListener("mousedown",()=>{
-
-const geo=new THREE.SphereGeometry(0.1)
-const mat=new THREE.MeshBasicMaterial({color:0xffff00})
-
-const bullet=new THREE.Mesh(geo,mat)
-
-bullet.position.copy(camera.position)
-
-bullet.velocity=new THREE.Vector3()
-
-camera.getWorldDirection(bullet.velocity)
-
-scene.add(bullet)
-
-bullets.push(bullet)
+spawnFruit(x)
 
 })
 
-const move={forward:false,back:false,left:false,right:false}
+function update(){
 
-document.addEventListener("keydown",(e)=>{
+objects.forEach(o=>{
 
-if(e.code==="KeyW")move.forward=true
-if(e.code==="KeyS")move.back=true
-if(e.code==="KeyA")move.left=true
-if(e.code==="KeyD")move.right=true
+o.vy += 0.3
+o.y += o.vy
 
-})
+const r = fruits[o.type].r
 
-document.addEventListener("keyup",(e)=>{
+if(o.y+r > canvas.height){
 
-if(e.code==="KeyW")move.forward=false
-if(e.code==="KeyS")move.back=false
-if(e.code==="KeyA")move.left=false
-if(e.code==="KeyD")move.right=false
-
-})
-
-function animate(){
-
-requestAnimationFrame(animate)
-
-const speed=0.15
-
-if(move.forward)controls.moveForward(speed)
-if(move.back)controls.moveForward(-speed)
-if(move.left)controls.moveRight(-speed)
-if(move.right)controls.moveRight(speed)
-
-bullets.forEach((b,bi)=>{
-
-b.position.add(b.velocity.clone().multiplyScalar(1))
-
-enemies.forEach((e,ei)=>{
-
-if(b.position.distanceTo(e.position)<1){
-
-scene.remove(e)
-scene.remove(b)
-
-enemies.splice(ei,1)
-bullets.splice(bi,1)
-
-score++
-scoreUI.innerText="Score: "+score
+o.y = canvas.height-r
+o.vy *= -0.3
 
 }
 
 })
 
+for(let i=0;i<objects.length;i++){
+for(let j=i+1;j<objects.length;j++){
+
+const a = objects[i]
+const b = objects[j]
+
+const dx=a.x-b.x
+const dy=a.y-b.y
+const dist=Math.sqrt(dx*dx+dy*dy)
+
+const ra=fruits[a.type].r
+const rb=fruits[b.type].r
+
+if(dist < ra+rb){
+
+if(a.type === b.type && a.type < fruits.length-1){
+
+a.type++
+objects.splice(j,1)
+
+score += 10
+document.getElementById("score").innerText="Score: "+score
+
+break
+
+}
+
+}
+
+}
+}
+
+}
+
+function draw(){
+
+ctx.clearRect(0,0,canvas.width,canvas.height)
+
+objects.forEach(o=>{
+
+ctx.beginPath()
+ctx.arc(o.x,o.y,fruits[o.type].r,0,Math.PI*2)
+ctx.fillStyle=fruits[o.type].color
+ctx.fill()
+
 })
 
-enemies.forEach((e)=>{
+}
 
-const dir = new THREE.Vector3()
+function loop(){
 
-dir.subVectors(camera.position,e.position).normalize()
-
-e.position.add(dir.multiplyScalar(0.02))
-
-if(e.position.distanceTo(camera.position)<1.5){
-
-hp-=1
-hpUI.innerText="HP: "+hp
-
-if(hp<=0){
-
-alert("GAME OVER\nScore: "+score)
-location.reload()
+update()
+draw()
+requestAnimationFrame(loop)
 
 }
 
-}
-
-})
-
-renderer.render(scene,camera)
-
-}
-
-animate()
+loop()
 
 </script>
 
